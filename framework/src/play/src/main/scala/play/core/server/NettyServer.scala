@@ -51,7 +51,7 @@ class NettyServer(appProvider: ApplicationProvider, port: Int, address: String =
   class DefaultPipelineFactory extends ChannelPipelineFactory {
     def getPipeline = {
       val newPipeline = pipeline()
-      newPipeline.addLast("decoder", new HttpRequestDecoder(4096, 8192, 8192))
+      newPipeline.addLast("decoder", new HttpRequestDecoder(Option(System.getProperty("http.maxInitialLineLength")).map(Integer.parseInt(_)).getOrElse(4096), 8192, 8192))
       newPipeline.addLast("encoder", new HttpResponseEncoder())
       newPipeline.addLast("handler", defaultUpStreamHandler)
       newPipeline
