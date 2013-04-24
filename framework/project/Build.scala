@@ -2,6 +2,8 @@ import sbt._
 import Keys._
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
 import com.typesafe.tools.mima.plugin.MimaKeys.previousArtifact
+import scala.xml._
+import scala.xml.transform._
 
 object PlayBuild extends Build {
   
@@ -18,7 +20,8 @@ object PlayBuild extends Build {
         settings = buildSettingsWithMIMA ++ Seq(
             previousArtifact := Some("play" % "templates_2.9.1" % previousVersion),
             libraryDependencies := templatesDependencies,
-            publishTo := Some(playRepository),
+            //publishTo := Some(playRepository),
+            publishTo := Some(artirixRepository),
             publishArtifact in (Compile, packageDoc) := false,
             publishArtifact in (Compile, packageSrc) := false,
             unmanagedJars in Compile += compilerJar,
@@ -33,7 +36,8 @@ object PlayBuild extends Build {
         settings = buildSettingsWithMIMA ++ Seq(
             previousArtifact := Some("play" % "anorm_2.9.1" % previousVersion),
             libraryDependencies := anormDependencies,
-            publishTo := Some(playRepository),
+            //publishTo := Some(playRepository),
+            publishTo := Some(artirixRepository),
             scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
             publishArtifact in (Compile, packageDoc) := false,
             publishArtifact in (Compile, packageSrc) := true
@@ -47,7 +51,8 @@ object PlayBuild extends Build {
             previousArtifact := Some("play" % "play_2.9.1" % previousVersion),
             libraryDependencies := runtime,
             sourceGenerators in Compile <+= sourceManaged in Compile map PlayVersion,
-            publishTo := Some(playRepository),
+            // publishTo := Some(playRepository),
+            publishTo := Some(artirixRepository),
             scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
             javacOptions ++= Seq("-encoding", "UTF-8"),
             publishArtifact in (Compile, packageDoc) := false,
@@ -64,7 +69,8 @@ object PlayBuild extends Build {
       settings = buildSettingsWithMIMA ++ Seq(
         previousArtifact := Some("play" % "play-test_2.9.1" % previousVersion),
         libraryDependencies := testDependencies,
-        publishTo := Some(playRepository),
+        //publishTo := Some(playRepository),
+        publishTo := Some(artirixRepository),
         scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
         javacOptions  ++= Seq("-encoding", "UTF-8","-Xlint:unchecked", "-Xlint:deprecation"),
         publishArtifact in (Compile, packageDoc) := false,
@@ -83,16 +89,20 @@ object PlayBuild extends Build {
       file("src/sbt-plugin"),
       settings = buildSettings ++ Seq(
         sbtPlugin := true,
-        publishMavenStyle := false,
+        publishMavenStyle := true,
         libraryDependencies := sbtDependencies,
         registerPlugin("com.typesafe.sbteclipse" % "sbteclipse-core" % "2.1.0-M2"),
         registerPlugin("com.github.mpeltonen" % "sbt-idea" % "1.1.0-M2-TYPESAFE"),
         unmanagedJars in Compile ++= sbtJars,
-        publishTo := Some(playIvyRepository),
+        //publishTo := Some(playRepository),
+        publishTo := Some(artirixRepository),
         scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
         publishArtifact in (Compile, packageDoc) := false,
         publishArtifact in (Compile, packageSrc) := false,
-        resolvers += typesafe
+        resolvers += typesafe,
+        pomPostProcess := { (node: scala.xml.Node) =>
+            new RuleTransformer(FixExtra)(node)
+        }
       )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*).dependsOn(PlayProject, TemplatesProject, ConsoleProject)
 
@@ -103,7 +113,8 @@ object PlayBuild extends Build {
         libraryDependencies := consoleDependencies,
         sourceGenerators in Compile <+= sourceManaged in Compile map PlayVersion,
         unmanagedJars in Compile ++=  sbtJars,
-        publishTo := Some(playRepository),
+        //publishTo := Some(playRepository),
+        publishTo := Some(artirixRepository),
         scalacOptions ++= Seq("-encoding", "UTF-8", "-Xlint","-deprecation", "-unchecked"),
         publishArtifact in (Compile, packageDoc) := false,
         publishArtifact in (Compile, packageSrc) := true,
@@ -126,6 +137,14 @@ object PlayBuild extends Build {
         )
     ).settings(com.typesafe.sbtscalariform.ScalariformPlugin.defaultScalariformSettings: _*)
      .dependsOn(PlayProject).aggregate(AnormProject, TemplatesProject, PlayProject, SbtPluginProject, ConsoleProject, PlayTestProject)
+
+    object FixExtra extends RewriteRule {
+        override def transform(n: scala.xml.Node): Seq[scala.xml.Node] = n match {
+            case <extraDependencyAttributes>{extra}</extraDependencyAttributes> => 
+                <extraDependencyAttributes xml:space="preserve">{extra.text.replace(" ", "\n")}</extraDependencyAttributes>
+            case _ => n
+        }
+    }
 
     object BuildSettings {
 
@@ -178,6 +197,7 @@ object PlayBuild extends Build {
         val typesafeIvyReleases = Resolver.url("Typesafe Ivy Releases Repository", url("http://typesafe.artifactoryonline.com/typesafe/ivy-releases/"))(Resolver.ivyStylePatterns) 
         val typesafeIvySnapshot = Resolver.url("Typesafe Ivy Snapshots Repository", url("http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/"))(Resolver.ivyStylePatterns) 
         val playIvyRepository = if (buildVersion.endsWith("SNAPSHOT")) typesafeIvySnapshot else typesafeIvyReleases
+        val artirixRepository = Resolver.ssh("Artirix Repo", "dev.artirix.com", "/var/www/html/maven")    
     }
 
     object Dependencies {
