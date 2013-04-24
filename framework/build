@@ -1,6 +1,6 @@
 #! /usr/bin/env sh
 
-PLAY_VERSION="2.0-SNAPSHOT"
+PLAY_VERSION="2.0.4.p1"
 
 if [ -z "${JPDA_PORT}" ]; then
   DEBUG_PARAM=""
